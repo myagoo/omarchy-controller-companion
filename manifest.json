@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.myagoo.controller-companion",
+  "name": "Controller Companion",
+  "version": "1.0.0",
+  "author": "Benjamin Millagou",
+  "license": "MIT",
+  "description": "Controller-driven mouse, scrolling, desktop navigation, and remapping for the 8BitDo Ultimate 2C Wireless Controller.",
+  "kinds": ["bar-widget", "service"],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml",
+    "service": "Service.qml"
+  },
+  "barWidget": {
+    "displayName": "Controller Companion",
+    "description": "Controller status, pointer tuning, and per-button remapping.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
