@@ -5,7 +5,6 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
-import xml.etree.ElementTree as ET
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -42,48 +41,46 @@ class BackendTests(unittest.TestCase):
         with open(self.backend.CONFIG, encoding="utf-8") as handle:
             config = json.load(handle)
 
+        self.assertTrue(config["enabled"])
         self.assertEqual(config["mappings"]["a"], {"type": "mouse", "value": "left"})
-        self.assertEqual(config["mappings"]["right_shoulder"], {
-            "type": "omarchy", "value": "workspace-next"
-        })
+        self.assertEqual(
+            config["mappings"]["right_shoulder"],
+            {"type": "omarchy", "value": "workspace-next"},
+        )
         self.assertEqual(config["mappings"]["left_trigger"]["type"], "disabled")
 
-    def test_profile_has_no_keyboard_relay_slots(self):
-        self.backend.main([str(BACKEND), "initialize"])
-        root = ET.parse(self.backend.PROFILE).getroot()
-        modes = [node.text for node in root.findall(".//slot/mode")]
-
-        self.assertNotIn("keyboard", modes)
-        self.assertIn("mousebutton", modes)
-        self.assertIn("mousemovement", modes)
-
-    def test_pointer_and_scroll_scale_one_to_fifty(self):
+    def test_existing_mappings_survive_initialize(self):
         data = self.backend.load_config()
-        data["mouseSpeed"] = 100
-        data["scrollSpeed"] = 100
-        self.backend.generate_profile(data)
-        root = ET.parse(self.backend.PROFILE).getroot()
+        data["mouseSpeed"] = 52
+        data["mappings"]["right_trigger"] = {"type": "key", "value": "logo"}
+        self.backend.save_config(data)
 
-        self.assertEqual({node.text for node in root.findall(".//mousespeedx")}, {"50"})
-        self.assertEqual({node.text for node in root.findall(".//wheelspeedy")}, {"50"})
-        self.assertEqual(self.backend.scaled_speed(1), 1)
+        self.backend.main([str(BACKEND), "initialize"])
+        reloaded = self.backend.load_config()
+
+        self.assertEqual(reloaded["mouseSpeed"], 52)
+        self.assertEqual(reloaded["mappings"]["right_trigger"]["value"], "logo")
+
+    def test_settings_keep_one_to_one_hundred_panel_range(self):
+        with mock.patch.object(self.backend, "signal_service"):
+            self.backend.main([str(BACKEND), "settings", "200", "0"])
+        data = self.backend.load_config()
+        self.assertEqual(data["mouseSpeed"], 100)
+        self.assertEqual(data["scrollSpeed"], 1)
+
+    def test_mapping_change_signals_daemon_reload(self):
+        with mock.patch.object(self.backend, "signal_service") as notify:
+            self.backend.main([str(BACKEND), "set", "a", "key", "Return"])
+
+        self.assertEqual(
+            self.backend.load_config()["mappings"]["a"],
+            {"type": "key", "value": "Return"},
+        )
+        notify.assert_called_once_with(self.backend.signal.SIGUSR2)
 
     def test_rejects_invalid_mouse_mapping(self):
         with self.assertRaisesRegex(SystemExit, "invalid mouse button"):
             self.backend.main([str(BACKEND), "set", "a", "mouse", "control"])
-
-    def test_held_controller_modifier_wraps_the_next_key(self):
-        data = self.backend.load_config()
-        data["mappings"]["dpad_left"] = {"type": "key", "value": "Left"}
-        self.backend.save_config(data)
-
-        with mock.patch.object(self.backend.subprocess, "Popen") as launch:
-            self.backend.main([str(BACKEND), "invoke", "dpad_left", "logo"])
-
-        launch.assert_called_once_with([
-            "hyprctl", "eval",
-            'hl.dispatch(hl.dsp.focus({ direction = "left" }))'
-        ])
 
 
 if __name__ == "__main__":

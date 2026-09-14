@@ -67,7 +67,7 @@ Panel {
     var name = ""
     if (key >= Qt.Key_A && key <= Qt.Key_Z) name = String.fromCharCode(key).toLowerCase()
     else if (key >= Qt.Key_0 && key <= Qt.Key_9) name = String.fromCharCode(key)
-    else if (key >= Qt.Key_F1 && key <= Qt.Key_F35) name = "F" + String(key - Qt.Key_F1 + 1)
+    else if (key >= Qt.Key_F1 && key <= Qt.Key_F24) name = "F" + String(key - Qt.Key_F1 + 1)
     else {
       var names = ({
         [Qt.Key_Return]: "Return", [Qt.Key_Enter]: "KP_Enter",

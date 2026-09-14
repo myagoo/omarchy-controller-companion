@@ -7,20 +7,19 @@ Omarchy panel for pointer tuning and per-button mappings.
 ## Features
 
 - Left stick controls the pointer; right stick scrolls.
-- Adjustable pointer and scroll speed. The panel's 1–100% range maps to
-  AntiMicroX's useful 1–50 range.
+- Adjustable linear pointer and scroll speed. The panel's 1–100% range maps
+  directly onto the engine's established 1–50 speed range.
 - Map buttons to a keyboard key or chord, an Omarchy action, an installed app,
   a mouse button, or Disabled.
 - Captures Return, keypad Enter, Space, and standalone modifiers correctly.
 - Modifier mappings remain logically held for controller chords. For example,
-  a button mapped to Super plus D-pad Left performs Omarchy's `Super+Left`
-  focus action. Super+Arrow is routed through Hyprland's Lua API so compositor
-  shortcuts work reliably instead of opening a menu from a leaked Super press.
+  a button mapped to Super plus D-pad Left emits the real `Super+Left` chord.
 - Back/View and Start/Menu can be mapped individually. Their actions run on
   release so pressing **Back + Start** can safely toggle the whole mapper.
 - Native enabled/disabled notifications and a struck-through bar icon while
   disabled.
-- AntiMicroX runs hidden with no tray icon.
+- The persistent virtual keyboard and mouse use Linux uinput, so compositor
+  shortcuts, pointer motion, scrolling, and clicks need no helper application.
 
 The controller's Mapping/Square and Star buttons configure hardware features
 inside the controller and do not emit Linux input events, so they cannot be
@@ -30,13 +29,11 @@ remapped by this plugin.
 
 - Omarchy with the current shell plugin commands
 - 8BitDo Ultimate 2C Wireless Controller
-- `antimicrox` and `wtype`
+- Python 3 and the normal `/dev/input` and `/dev/uinput` permissions provided
+  by an Omarchy desktop session
 
-Install the two packaged dependencies:
-
-```bash
-omarchy pkg add antimicrox wtype
-```
+There are no additional packages to install. The input engine uses Python's
+standard library and Linux evdev/uinput directly.
 
 ## Install
 
@@ -97,11 +94,10 @@ rm -r ~/.config/omarchy/controller-companion
 - If the controller is not detected, verify its name with
   `cat /proc/bus/input/devices` and confirm it is the Ultimate 2C Wireless
   model.
-- If pointer control works outside the plugin even while disabled, close any
-  separately launched AntiMicroX instance and remove old AntiMicroX autostart
-  entries.
-- Runtime logs are stored at
-  `~/.local/state/omarchy/controller-companion/antimicrox.log`.
+- If an older release left AntiMicroX running, close that process once. Version
+  1.1 and later neither starts nor communicates with AntiMicroX.
+- Service errors appear in the Omarchy Shell journal. Inspect them with
+  `journalctl --user -u omarchy-shell`.
 
 ## Development
 
@@ -112,10 +108,14 @@ omarchy plugin validate .
 python -m unittest discover -s tests -v
 ```
 
-The project uses only Python's standard library at runtime. AntiMicroX handles
-continuous pointer/scroll output; the bundled helper dispatches buttons
-directly to avoid function/media-key collisions in XKB. Ordinary key chords
-use `wtype`; Omarchy's Super+Arrow focus chords use Hyprland's Lua dispatcher.
+The project uses only Python's standard library at runtime. Its persistent
+uinput keyboard emits complete key chords into Hyprland, while a separate
+uinput pointer handles linear analog movement, scrolling, and mouse buttons.
+Captured keysyms are resolved against Hyprland's active keyboard layout, so
+semantic mappings remain correct on layouts such as AZERTY.
+
+The persistent-uinput approach was inspired by Parminder Klair's MIT-licensed
+[Controller Control](https://github.com/perminder-klair/omarchy-controller-control).
 
 ## License
 
